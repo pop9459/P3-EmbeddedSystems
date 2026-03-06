@@ -4,7 +4,7 @@ Student ID: 5486866
 
 ## Blink with hardware reset
 ### Code
-```
+```python
 from machine import Pin
 import utime
 
@@ -29,7 +29,7 @@ while True:
 ## Mario pico
 
 ### Code
-```
+```python
 pyramidSize = 10
 
 for y in range(pyramidSize):
@@ -65,7 +65,7 @@ for y in range(pyramidSize):
 ## 7-Segments Voltmeter (0..10V)
 
 ### Code
-```
+```python
 
 ```
 
@@ -77,7 +77,7 @@ for y in range(pyramidSize):
 ## RTC and temperature on LCD-display
 
 ### Code
-```
+```python
 
 ```
 
@@ -89,7 +89,7 @@ for y in range(pyramidSize):
 ## Dino cheater (HID)
 
 ### Code
-```
+```python
 
 ```
 
@@ -101,7 +101,7 @@ for y in range(pyramidSize):
 ## Analog joystick (HID)
 
 ### Code
-```
+```python
 import time
 import board
 import analogio
@@ -191,7 +191,7 @@ while True:
 ## WiFi scanner
 
 ### Code
-```
+```python
 
 ```
 
@@ -203,7 +203,7 @@ while True:
 ## Controlling stuff (Webserver)
 
 ### Code
-```
+```python
 
 ```
 
@@ -215,7 +215,7 @@ while True:
 ## Attendance (RFID, RTC, web and LCD)
 
 ### Code
-```
+```python
 
 ```
 
@@ -227,7 +227,7 @@ while True:
 ## Solo pico project (not mandatory) 
 
 ### Code
-```
+```python
 
 ```
 
