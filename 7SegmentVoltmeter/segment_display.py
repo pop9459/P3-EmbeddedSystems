@@ -53,7 +53,7 @@ class Display():
     def set_digit(self, digit_index, digit_value, dp=False):
         # Set the common cathode
         for index in range(len(self.digit_pins)):
-            digit_on = not (index == digit_index)
+            digit_on = index == digit_index
             self.digit_pins[index].value(digit_on)
 
         # Set the segments for the digit
