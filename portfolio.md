@@ -22,6 +22,7 @@ while True:
 ```
 
 ### Description
+This is a simple test that blinks an LED on and off. With this we can verify that the microcontroller works properly. The code first imports the libraries for pin controll and time functions. It defines the output pins for the LEDs. In this case I used one external LED and also the picos built in LED. After that it just enters in a loop where it turns the leds on and off with some delays in between.
 
 ### Output
 ![breadboard setup](./BlinkWithExternalHardwareReset/IMG_5917.JPEG)
