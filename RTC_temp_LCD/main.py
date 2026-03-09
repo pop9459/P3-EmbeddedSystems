@@ -48,7 +48,7 @@ next_tmp_read_time = current_time # Read temp every 10 seconds
 rtc_update_interval = 1  # seconds
 next_rtc_update_time = current_time  # Update RTC display every second
 
-lcd_update_interval = 1  # seconds
+lcd_update_interval = 0.5  # seconds
 next_lcd_update_time = current_time# Update LCD every second
 
 try:
