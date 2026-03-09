@@ -59,6 +59,7 @@ for y in range(pyramidSize):
 ```
 
 ### Description
+A short practice program that draws a pyramid shape to the output terminal using printable characters. It defines one variable at the begining which controlls the size of the pyramid drawing. For the first pyramid I just use a single character. It starts drawing it from the top so each line will get N "#" symbols on the N-th line. The second pyramid works on the same principle but prints diffenet symbols based on if it is printing the edge of the pyramid or the middle part 
 
 ### Output
 ![console output](/MarioPico/image.png)
