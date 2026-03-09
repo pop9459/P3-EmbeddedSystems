@@ -18,7 +18,7 @@ DISPLAY_SEGMENT_DP_PIN = 20
 
 # Voltmeter pin definition
 VOLT_METER_PIN = 26
-VOLTAGE_DIVIDER_RATIO = 3.173897864 # Calculated as (R1 + R2) / R2, where R1 = 100kΩ and R2 = 46kΩ
+VOLTAGE_DIVIDER_RATIO = 3.127659574 # Calculated as (R1 + R2) / R2, where R1 = 10kΩ and R2 = 4.7kΩ
 
 # Initialize the display
 display = Display(
