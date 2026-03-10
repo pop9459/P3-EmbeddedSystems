@@ -67,14 +67,143 @@ A short practice program that draws a pyramid shape to the output terminal using
 ## 7-Segments Voltmeter (0..10V)
 
 ### Code
+main.py
 ```python
+from segment_display import Display
+from machine import Pin, ADC
+import time
 
+# Display pin definitions
+DISPLAY_DIGIT_1_PIN = 2
+DISPLAY_DIGIT_2_PIN = 3
+DISPLAY_DIGIT_3_PIN = 4
+DISPLAY_DIGIT_4_PIN = 5
+DISPLAY_SEGMENT_A_PIN = 6
+DISPLAY_SEGMENT_B_PIN = 7
+DISPLAY_SEGMENT_F_PIN = 8
+DISPLAY_SEGMENT_E_PIN = 16
+DISPLAY_SEGMENT_D_PIN = 17
+DISPLAY_SEGMENT_C_PIN = 18
+DISPLAY_SEGMENT_G_PIN = 19
+DISPLAY_SEGMENT_DP_PIN = 20
+
+# Voltmeter pin definition
+VOLT_METER_PIN = 26
+VOLTAGE_DIVIDER_RATIO = 3.127659574 # Calculated as (R1 + R2) / R2, where R1 = 10kΩ and R2 = 4.7kΩ
+
+# Initialize the display
+display = Display(
+    DISPLAY_DIGIT_1_PIN,
+    DISPLAY_DIGIT_2_PIN,
+    DISPLAY_DIGIT_3_PIN,
+    DISPLAY_DIGIT_4_PIN,
+    DISPLAY_SEGMENT_A_PIN,
+    DISPLAY_SEGMENT_B_PIN,
+    DISPLAY_SEGMENT_C_PIN,
+    DISPLAY_SEGMENT_D_PIN,
+    DISPLAY_SEGMENT_E_PIN,
+    DISPLAY_SEGMENT_F_PIN,
+    DISPLAY_SEGMENT_G_PIN,
+    DISPLAY_SEGMENT_DP_PIN,
+)
+
+# Initialize the voltmeter
+voltmeter = ADC(Pin(VOLT_METER_PIN, Pin.IN))
+
+# Main loop variables
+update_delay_ms = 250
+next_update_time = time.ticks_ms()
+voltage = 0
+
+while True:
+    current_time = time.ticks_ms()
+
+    display.write_value(voltage*100, dp=1)
+
+    if time.ticks_diff(current_time, next_update_time) >= 0:
+        voltage = (voltmeter.read_u16() / 65535) * 3.3 * VOLTAGE_DIVIDER_RATIO # Convert the ADC reading to a voltage value
+        print(voltage)
+
+        next_update_time = time.ticks_add(current_time, update_delay_ms)
 ```
+segment_display.py
+```python
+from machine import Pin
+import time
 
+DIGITS = [
+    # .GFEDCBA
+    0b00111111, # 0
+    0b00000110, # 1
+    0b01011011, # 2
+    0b01001111, # 3
+    0b01100110, # 4
+    0b01101101, # 5
+    0b01111101, # 6
+    0b00000111, # 7
+    0b01111111, # 8
+    0b01101111, # 9
+]
+
+class Display():
+    digit_pins = []
+    segment_pins = []
+    digit_time_on_us = 500
+    digit_time_off_us = 100
+    
+    def __init__(self, DIGIT_1_PIN, DIGIT_2_PIN, DIGIT_3_PIN, DIGIT_4_PIN, SEGMENT_A_PIN, SEGMENT_B_PIN, SEGMENT_C_PIN, SEGMENT_D_PIN, SEGMENT_E_PIN, SEGMENT_F_PIN, SEGMENT_G_PIN, SEGMENT_DP_PIN):
+        self.digit_pins = [
+            Pin(DIGIT_1_PIN, Pin.OUT),
+            Pin(DIGIT_2_PIN, Pin.OUT),
+            Pin(DIGIT_3_PIN, Pin.OUT),
+            Pin(DIGIT_4_PIN, Pin.OUT),
+        ]
+
+        self.segment_pins = [
+            Pin(SEGMENT_A_PIN, Pin.OUT),
+            Pin(SEGMENT_B_PIN, Pin.OUT),
+            Pin(SEGMENT_C_PIN, Pin.OUT),
+            Pin(SEGMENT_D_PIN, Pin.OUT),
+            Pin(SEGMENT_E_PIN, Pin.OUT),
+            Pin(SEGMENT_F_PIN, Pin.OUT),
+            Pin(SEGMENT_G_PIN, Pin.OUT),
+            Pin(SEGMENT_DP_PIN, Pin.OUT),
+        ]
+        
+    def write_value(self, value, dp=-1):
+        # Convert the value to an integer and clamp it to the range 0-9999
+        value = max(0, min(9999, value))
+        value = int(value)
+
+        for digit_index in range(4):
+            dp_enable = (dp == digit_index)
+            digit_value = (value // (10 ** (3 - digit_index))) % 10
+            self.set_digit(digit_index, digit_value, dp=dp_enable)
+
+    def set_digit(self, digit_index, digit_value, dp=False):
+        # Set the common cathode
+        for index in range(len(self.digit_pins)):
+            digit_on = index == digit_index
+            self.digit_pins[index].value(digit_on)
+
+        # Set the segments for the digit
+        for index in range(len(self.segment_pins)):
+            segment_on = (DIGITS[digit_value] >> index) & 1
+            self.segment_pins[index].value(segment_on)
+        self.segment_pins[7].value(dp)
+
+        time.sleep_us(self.digit_time_on_us)
+
+        # Turn off all digits to reduce ghosting
+        for index in range(len(self.segment_pins)):
+            self.segment_pins[index].value(0)
+
+        time.sleep_us(self.digit_time_off_us)
+```
 ### Description
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
+![breadboard setup](/7SegmentVoltmeter/IMG_5929.JPEG)
 
 ## RTC and temperature on LCD-display
 
@@ -86,13 +215,102 @@ A short practice program that draws a pyramid shape to the output terminal using
 ### Description
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
+![breadboard setup](/RTC_temp_LCD/IMG_5931.JPEG) 
 
 ## Dino cheater (HID)
 
 ### Code
 ```python
+from machine import Pin, SoftI2C, I2C, ADC
+from machine_i2c_lcd import I2cLcd
+import time
+import ds1302
 
+# RTC constants
+RTC_CLK_PIN = 5
+RTC_DAT_PIN = 7
+RTC_RST_PIN = 8
+
+# I2C LCD constants
+I2C_NUM_ROWS = 2
+I2C_NUM_COLS = 16
+
+LCD_SDA_PIN = 16
+LCD_SCL_PIN = 17
+
+# RTC initialization
+rtc_module = ds1302.DS1302(Pin(RTC_CLK_PIN), Pin(RTC_DAT_PIN), Pin(RTC_RST_PIN))
+
+# LCD initialization
+i2c = I2C(0, scl=Pin(LCD_SCL_PIN), sda=Pin(LCD_SDA_PIN), freq=400000)
+devices = i2c.scan()
+
+i2c_addr = None
+for d in devices:
+    if d in range(0x20, 0x28):  # PCF8574 I2C address range
+        print(f"Setting i2c address: {hex(d)}")
+        i2c_addr = d
+        break
+
+lcd = I2cLcd(i2c, i2c_addr, I2C_NUM_ROWS, I2C_NUM_COLS)
+lcd.backlight_on()
+lcd.hide_cursor()
+lcd.clear()
+
+# LM35 initialization
+LM35 = ADC(Pin(26)) 
+
+# set the rtc module
+#rtc_module.date_time([2026, 3, 8, 7, 19, 50, 0]) # format: [year, month, day, weekday, hour, minute, second]
+
+# Main loop variables
+current_time = time.time()
+tmp_read_update_interval = 3  # seconds
+next_tmp_read_time = current_time # Read temp every 10 seconds
+
+rtc_update_interval = 1  # seconds
+next_rtc_update_time = current_time  # Update RTC display every second
+
+lcd_update_interval = 0.5  # seconds
+next_lcd_update_time = current_time# Update LCD every second
+
+try:
+    while True:
+        current_time = time.time()
+
+        # Get data from temp sensor
+        if current_time >= next_tmp_read_time:
+            LM35raw = LM35.read_u16()
+            LM35temp = (LM35raw / 65535) * 3.3 * 100  # Convert to Celsius
+
+            next_tmp_read_time = current_time + tmp_read_update_interval 
+
+        # Get data from DS1302 RTC
+        if current_time >= next_rtc_update_time:
+            date_time = rtc_module.date_time()
+
+            next_rtc_update_time = current_time + rtc_update_interval
+
+        # Debug print
+        # if date_time is not None:
+        #     print(f"Current Date and Time: {date_time[2]:02d}.{date_time[1]:02d}.{date_time[0]:04d} {date_time[4]:02d}:{date_time[5]:02d}:{date_time[6]:02d}")
+        # else:
+        #     print("Current Date and Time: unavailable")
+
+        # Display on LCD
+        if current_time >= next_lcd_update_time:
+            if date_time is not None:
+                lcd.move_to(0, 0)
+                lcd.putstr(f"{date_time[2]:02d}.{date_time[1]:02d}.  {date_time[4]:02d}:{date_time[5]:02d}:{date_time[6]:02d}")
+            
+            lcd.move_to(0, 1)
+            lcd.putstr(f"Temp: {LM35temp:02.1f}C")
+
+            next_lcd_update_time = current_time + lcd_update_interval
+
+except KeyboardInterrupt:
+    print("Exiting program.")
+    lcd.backlight_off()
 ```
 
 ### Description
