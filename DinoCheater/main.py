@@ -12,10 +12,13 @@ BUILTIN_LED_PIN = board.LED
 TOP_PHOTORESISTOR_PIN = board.GP27
 BOT_PHOTORESISTOR_PIN = board.GP28
 
-TOP_BLACK_TRESHHOLD = 2000
-BOT_BLACK_TRESHHOLD = 3000
+# TOP_BLACK_TRESHHOLD = 2000
+# BOT_BLACK_TRESHHOLD = 3000
 
-SENSOR_HISTORY_SIZE = 10
+SENSOR_HISTORY_SIZE = 5
+CALIBRATION_SAMPLES = 500
+CALIBRATION_SAMPLE_DELAY = 0.01
+BLACK_THRESHOLD_FACTOR = 0.35 # 0-1, more = sooner trigger
 
 JUMP_KEY = Keycode.UP_ARROW
 DUCK_KEY = Keycode.DOWN_ARROW
@@ -39,6 +42,38 @@ built_in_led.value = False
 top_sensor_history = []
 bot_sensor_history = []
 
+
+def calibrate_photoresistors(sample_count=CALIBRATION_SAMPLES, sample_delay=CALIBRATION_SAMPLE_DELAY):
+    top_max = 0
+    top_min = 65535
+    bot_max = 0
+    bot_min = 65535
+
+    print("Calibrating sensors...")
+    built_in_led.value = True
+    for _ in range(sample_count):
+        if(top_photoresistor.value > top_max):
+            top_max = top_photoresistor.value
+        if(top_photoresistor.value < top_min):
+            top_min = top_photoresistor.value
+        if(bot_photoresistor.value > bot_max):
+            bot_max = bot_photoresistor.value
+        if(bot_photoresistor.value < bot_min):
+            bot_min = bot_photoresistor.value
+        time.sleep(sample_delay)
+    built_in_led.value = False
+
+    top_diff = top_max - top_min
+    bot_diff = bot_max - bot_min
+
+    top_threshold = top_min + (top_diff * BLACK_THRESHOLD_FACTOR)
+    bot_threshold = bot_min + (bot_diff * BLACK_THRESHOLD_FACTOR)
+
+    return top_threshold, bot_threshold
+
+
+TOP_BLACK_TRESHHOLD, BOT_BLACK_TRESHHOLD = calibrate_photoresistors()
+
 while True:
     top_value = top_photoresistor.value
     bot_value = bot_photoresistor.value
@@ -54,7 +89,7 @@ while True:
     top_average = sum(top_sensor_history) / len(top_sensor_history)
     bot_average = sum(bot_sensor_history) / len(bot_sensor_history)
 
-    print(f"Top AVG: {top_average}" f" Bot AVG: {bot_average}") 
+    print(f"Top AVG: {top_average} Bot AVG: {bot_average}  | Top_tresh: {TOP_BLACK_TRESHHOLD} Bot_tresh: {BOT_BLACK_TRESHHOLD}") 
 
     button_value = bool(button_pin.value)
     if(button_value):
@@ -64,6 +99,8 @@ while True:
         if game_started:
             kbd.press(JUMP_KEY)
             kbd.release(JUMP_KEY)
+            kbd.press(DUCK_KEY)
+            kbd.release(DUCK_KEY)
         else:
             kbd.release(JUMP_KEY)
             kbd.release(DUCK_KEY)
@@ -74,13 +111,19 @@ while True:
         if(bot_average < BOT_BLACK_TRESHHOLD):
             print("Jump")
             kbd.press(JUMP_KEY)
-            time.sleep(0.1)
+            built_in_led.value = False
+            time.sleep(0.25)
             kbd.release(JUMP_KEY)
+            kbd.press(DUCK_KEY)
+            time.sleep(0.075)
+            kbd.release(DUCK_KEY)
+            built_in_led.value = True
         
         # Avoid flying bird
-        if(top_average < TOP_PHOTORESISTOR_PIN and bot_average > BOT_BLACK_TRESHHOLD):
+        if(top_average < TOP_BLACK_TRESHHOLD and bot_average > BOT_BLACK_TRESHHOLD):
             print("Duck")
-            time.sleep(1)
             kbd.press(DUCK_KEY)
-            time.sleep(3)
+            built_in_led.value = False
+            time.sleep(0.6)
             kbd.release(DUCK_KEY)
+            built_in_led.value = True
