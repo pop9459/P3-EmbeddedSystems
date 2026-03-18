@@ -1,6 +1,10 @@
 import time
 import network
 import socket
+try:
+    import ujson as json
+except ImportError:
+    import json
 from secrets import SSID, PASSWORD
 
 # enable station interface and connect to WiFi access point
@@ -27,39 +31,55 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
 s.listen(5)
 
+
+def send_response(conn, status, content_type, body):
+    conn.send(('HTTP/1.1 {}\r\n'.format(status)).encode())
+    conn.send(('Content-Type: {}\r\n'.format(content_type)).encode())
+    conn.send('Connection: close\r\n\r\n'.encode())
+    conn.send(body.encode())
+
+
+def scan_networks_payload(nic):
+    networks = nic.scan()
+    networks.sort(key=lambda x: x[3], reverse=True)  # sort by RSSI (signal strength)
+
+    rows = []
+    for index, net in enumerate(networks, start=1):
+        ssid = net[0].decode('utf-8') if isinstance(net[0], bytes) else str(net[0])
+        if not ssid:
+            ssid = '(hidden)'
+        rows.append({'nr': index, 'ssid': ssid, 'rssi': net[3]})
+
+    return json.dumps({'ok': True, 'networks': rows})
+
+
+def load_index_html():
+    try:
+        with open('index.html', 'r') as f:
+            return f.read()
+    except Exception as e:
+        return '<h1>index.html missing</h1><p>{}</p>'.format(e)
+
 while True:
     conn, addr = s.accept()
-    request = str(conn.recv(1024))
-    
-    if(request.find('/scan') != -1):
-        # perform a scan and return results as HTML
-        conn.send('HTTP/1.1 200 OK\n'.encode())
-        conn.send('Content-Type: text/html\n'.encode())
-        conn.send('Connection: close\n\n'.encode())
-        conn.send('<html><body><h1>Available WiFi Networks</h1><ul>'.encode())
-        conn.send("<table>\n".encode())
-        conn.send("<tr>\n".encode())
-        conn.send("<th>Nr</th><th>SSID</th><th>RSSI</th>\n".encode())
-        conn.send("</tr>\n".encode())
-        
+    request_raw = conn.recv(1024)
+    request_line = request_raw.decode('utf-8', 'ignore').split('\r\n')[0]
+    request_parts = request_line.split(' ')
+    path = request_parts[1] if len(request_parts) > 1 else '/'
+
+    if path == '/':
+        html = load_index_html()
+        send_response(conn, '200 OK', 'text/html', html)
+    elif path.startswith('/scan'):
         try:
-            networks = nic.scan()
-            networks.sort(key=lambda x: x[3], reverse=True)  # sort by RSSI (signal strength)
-            for index, net in enumerate(networks, start=1):
-                ssid = net[0].decode('utf-8') if isinstance(net[0], bytes) else str(net[0])
-                conn.send(('<tr><td>{}</td><td>{}</td><td>{}</td></tr>\n'.format(index, ssid, net[3])).encode())
+            payload = scan_networks_payload(nic)
+            send_response(conn, '200 OK', 'application/json', payload)
         except Exception as e:
-            conn.send(('<tr><td colspan="3">Error scanning: {}</td></tr>\n'.format(e)).encode())
-        conn.send("</table>\n".encode())
-        conn.send('</body></html>'.encode())
-        for testint in range(1, 6):
-            conn.send(testint)
-            time.sleep(0.5)
+            error_payload = json.dumps({'ok': False, 'error': str(e), 'networks': []})
+            send_response(conn, '500 Internal Server Error', 'application/json', error_payload)
     else:
-        conn.send('HTTP/1.1 404 Not Found\n'.encode())
-        conn.send('Content-Type: text/html\n'.encode())
-        conn.send('Connection: close\n\n'.encode())
-    
+        send_response(conn, '404 Not Found', 'text/plain', 'Not Found')
+
     conn.close()
     # (optional) small delay to give the WiFi chip a breather
     time.sleep(1)

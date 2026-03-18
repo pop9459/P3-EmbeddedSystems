@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Scanner</title>
+</head>
+<body>
+  <h1>Available WiFi Networks</h1>
+  <div id="status">Loading scan results...</div>
+  <table>
+    <thead>
+      <tr><th>Nr</th><th>SSID</th><th>RSSI</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    async function refreshScan() {
+      const rows = document.getElementById('rows');
+
+      try {
+        const response = await fetch('/scan');
+        const data = await response.json();
+
+        if (!data.ok) {
+            return;
+        }
+        
+        ac_points = data.networks
+        for (let i = 0; i < ac_points.length; i++) {
+            const ap = ac_points[i];
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${ap.nr}</td><td>${ap.ssid}</td><td>${ap.rssi}</td>`;
+            rows.appendChild(row);
+        }
+
+      } catch (err) {
+            return;
+        }
+    }
+
+    refreshScan();
+    setInterval(refreshScan, 10000);
+  </script>
+</body>
+</html>
