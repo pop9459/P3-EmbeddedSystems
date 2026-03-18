@@ -1,0 +1,29 @@
+Attendance
+Scan ID card to clock in and out
+want an overview of presence - web
+time of clock in/out also
+
+compenents: 
+    pico
+    lcd
+    rfid reader
+    student card
+    tricolor led - green for in/orange out/red not reckognised
+    rtc
+    buzzer
+
+web:
+see all the names
+formated table
+green bg for ppl in/ppl out orange
+
+intuitive sound 
+raising melody for in/dropping for out/eeeh for error
+
+lcd:
+idle: scan card + time
+clock in: welcome {name} + time
+clock out: good bye {name} + time
+unknown card: unknown card + time
+
+long term storage on pico
