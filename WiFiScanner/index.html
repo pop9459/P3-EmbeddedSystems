@@ -4,10 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WiFi Scanner</title>
+    <style>
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 5px;
+      }
+    </style>
 </head>
 <body>
   <h1>Available WiFi Networks</h1>
-  <div id="status">Loading scan results...</div>
   <table>
     <thead>
       <tr><th>Nr</th><th>SSID</th><th>RSSI</th></tr>
@@ -27,6 +33,8 @@
             return;
         }
         
+        rows.innerHTML = '';
+
         ac_points = data.networks
         for (let i = 0; i < ac_points.length; i++) {
             const ap = ac_points[i];
