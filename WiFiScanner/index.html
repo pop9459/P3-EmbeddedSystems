@@ -39,7 +39,7 @@
         for (let i = 0; i < ac_points.length; i++) {
             const ap = ac_points[i];
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${ap.nr}</td><td>${ap.ssid}</td><td>${ap.rssi}</td>`;
+            row.innerHTML = `<td>${ap.nr}</td><td>${ap.ssid}</td><td>${ap.rssi} dBm</td>`;
             rows.appendChild(row);
         }
 
