@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button & LED Control</title>
+</head>
+<body>
+    <h1>Button & LED Control</h1>
+    
+    <p>Button Status: <strong id="buttonStatus">Loading...</strong></p>
+    <p>CPU Temperature: <strong id="cpuTemp">Loading...</strong> &deg;C</p>
+    
+    <button onclick="toggleLED()">Toggle LED</button>
+    
+    <script>
+        async function updateStatus() {
+            try {
+                const response = await fetch('/hardwareState');
+                const data = await response.json();
+                document.getElementById('buttonStatus').textContent = data.buttonState ? 'Pressed' : 'Not Pressed';
+                document.getElementById('cpuTemp').textContent = data.cpuTemp.toFixed(2);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function toggleLED() {
+            try {
+                const response = await fetch('/toggleLED');
+                const data = await response.json();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        // Update status on page load and every 500ms
+        updateStatus();
+        setInterval(updateStatus, 1000);
+    </script>
+</body>
+</html>
