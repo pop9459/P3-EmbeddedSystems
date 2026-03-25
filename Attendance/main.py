@@ -5,6 +5,7 @@ import time
 import ds1302
 import buzzer
 import machine_i2c_lcd
+from mfrc522 import MFRC522
 
 # Pin definitions
 BUZZER_PIN = 2
@@ -13,11 +14,11 @@ RTC_DAT_PIN = 6
 RTC_CLK_PIN = 7
 LCD_SDA_PIN = 8
 LCD_SCL_PIN = 9
-RFID_READER_SDA_PIN = 12
-RFID_READER_SCK_PIN = 13
-RFID_READER_MOSI_PIN = 16
-RFID_READER_MISO_PIN = 17
-RFID_READER_RST_PIN = 21
+RFID_READER_SDA_PIN = 14
+RFID_READER_SCK_PIN = 10
+RFID_READER_MOSI_PIN = 11
+RFID_READER_MISO_PIN = 12
+RFID_READER_RST_PIN = 17
 LED_B_PIN = 18
 LED_G_PIN = 19
 LED_R_PIN = 20
@@ -53,6 +54,17 @@ lcd = machine_i2c_lcd.I2cLcd(i2c, lcd_addr, 2, 16)
 lcd.clear()
 lcd.putstr("LCD ready")
 
+# RFID reader initialization
+rfid = MFRC522(
+	sck=Pin(RFID_READER_SCK_PIN),
+	mosi=Pin(RFID_READER_MOSI_PIN),
+	miso=Pin(RFID_READER_MISO_PIN),
+	rst=Pin(RFID_READER_RST_PIN),
+	cs=Pin(RFID_READER_SDA_PIN),
+	spi_id=1
+)
+
+
 while True:
 	# RGB led example
 	# rgb_led.set_color(True, False, False) # Red
@@ -71,15 +83,6 @@ while True:
 	# print("{:04d}-{:02d}-{:02d} ({}) {:02d}:{:02d}:{:02d}".format(y, m, d, w, hh, mm, ss))
 	# time.sleep(1)
 	
-    # Buzzer example
-
-
-    # time.sleep(1)
-
-
-
-    # time.sleep(1)
-	
 	# LCD example
 	# now = rtc.date_time()
 	# lcd.clear()
@@ -93,5 +96,16 @@ while True:
 	# 	lcd.move_to(0, 1)
 	# 	lcd.putstr("No RTC data")
 	# time.sleep(1)
-    
-	pass
+
+	# RFID reader example
+	stat, bits = rfid.request(rfid.REQIDL)
+	if stat == rfid.OK:
+		stat, uid = rfid.SelectTagSN()
+		if stat == rfid.OK:
+			print("Card detected! UID: {}".format([hex(b) for b in uid]))
+			rgb_led.set_color(False, True, False)  # Green for success
+			time.sleep(0.5)
+			rgb_led.set_color(False, False, False)  # Off
+		else:
+			print("Could not read card UID")
+	    
