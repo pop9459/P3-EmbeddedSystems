@@ -6,6 +6,7 @@ import ds1302
 import buzzer
 import machine_i2c_lcd
 from mfrc522 import MFRC522
+from attendance_db import AttendanceDB
 
 # Pin definitions
 BUZZER_PIN = 2
@@ -64,6 +65,8 @@ rfid = MFRC522(
 	spi_id=1
 )
 
+# Attendance database initialization
+attendance_db = AttendanceDB()
 
 while True:
 	# RGB led example
@@ -75,13 +78,13 @@ while True:
     # time.sleep(0.5)
 
     # RTC example
-	# now = rtc.date_time()
-	# if now is None:
-	# 	time.sleep(1)
-	# 	continue
-	# y, m, d, w, hh, mm, ss = now
-	# print("{:04d}-{:02d}-{:02d} ({}) {:02d}:{:02d}:{:02d}".format(y, m, d, w, hh, mm, ss))
-	# time.sleep(1)
+	now = rtc.date_time()
+	if now is None:
+		time.sleep(1)
+		continue
+	y, m, d, w, hh, mm, ss = now
+	print("{:04d}-{:02d}-{:02d} ({}) {:02d}:{:02d}:{:02d}".format(y, m, d, w, hh, mm, ss))
+	time.sleep(1)
 	
 	# LCD example
 	# now = rtc.date_time()
@@ -98,14 +101,18 @@ while True:
 	# time.sleep(1)
 
 	# RFID reader example
-	stat, bits = rfid.request(rfid.REQIDL)
-	if stat == rfid.OK:
-		stat, uid = rfid.SelectTagSN()
-		if stat == rfid.OK:
-			print("Card detected! UID: {}".format([hex(b) for b in uid]))
-			rgb_led.set_color(False, True, False)  # Green for success
-			time.sleep(0.5)
-			rgb_led.set_color(False, False, False)  # Off
-		else:
-			print("Could not read card UID")
-	    
+	# stat, bits = rfid.request(rfid.REQIDL)
+	# if stat == rfid.OK:
+	# 	stat, uid = rfid.SelectTagSN()
+	# 	if stat == rfid.OK:
+	# 		print("Card detected! UID: {}".format([hex(b) for b in uid]))
+	# 		rgb_led.set_color(False, True, False)  # Green for success
+	# 		time.sleep(0.5)
+	# 		rgb_led.set_color(False, False, False)  # Off
+	# 	else:
+	# 		print("Could not read card UID")
+
+
+
+
+	pass
