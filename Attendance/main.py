@@ -72,15 +72,11 @@ while True:
 	# time.sleep(1)
 	
     # Buzzer example
-    # buzzer.play_tone(110, 0.2) # A4 note for 2 seconds
-    # buzzer.play_tone(130, 0.2) # A4 note for 2 seconds
-    # buzzer.play_tone(180, 0.2) # A4 note for 2 seconds
+
 
     # time.sleep(1)
 
-    # buzzer.play_tone(180, 0.2) # A4 note for 2 seconds
-    # buzzer.play_tone(130, 0.2) # A4 note for 2 seconds
-    # buzzer.play_tone(110, 0.2) # A4 note for 2 seconds
+
 
     # time.sleep(1)
 	

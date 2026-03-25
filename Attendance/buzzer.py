@@ -25,3 +25,13 @@ class Buzzer:
             time.sleep(period / 2)
             self.off()
             time.sleep(period / 2)
+
+    def play_rising_tone(self):
+        self.play_tone(110, 0.2)
+        self.play_tone(130, 0.2)
+        self.play_tone(180, 0.2)
+
+    def play_falling_tone(self):
+        self.play_tone(180, 0.2) # A4 note for 2 seconds
+        self.play_tone(130, 0.2) # A4 note for 2 seconds
+        self.play_tone(110, 0.2) # A4 note for 2 seconds
