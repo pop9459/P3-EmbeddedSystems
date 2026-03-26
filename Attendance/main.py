@@ -1,4 +1,5 @@
 # Micropython code
+
 from rgb_led import RgbLed
 from machine import Pin, I2C
 import ds1302
@@ -29,6 +30,8 @@ LED_R_PIN = 20
 
 SET_RTC_ON_BOOT = False
 REGISTER_TIME_WINDOW_SECONDS = 30
+TIME_UPDATE_INTERVAL_MILLIS = 500
+LCD_UPDATE_INTERVAL_MILLIS = 500
 
 # Initialize peripherals
 # RGB LED initialization
@@ -78,6 +81,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
 s.listen(5)
 
+
 # Helper functions
 def uid_to_key(uid):
 	"""Convert UID list/bytes/string into a stable dict key."""
@@ -86,8 +90,8 @@ def uid_to_key(uid):
 		return ''.join('{:02X}'.format(x) for x in uid)
 	return str(uid)
 
+
 def readRfidCard():
-	print("Waiting for card to register...")
 	start_time = time.time()
 	while time.time() - start_time < REGISTER_TIME_WINDOW_SECONDS:
 		stat, bits = rfid.request(rfid.REQIDL)
@@ -101,6 +105,7 @@ def readRfidCard():
 
 
 def registerCard(name): 
+	"""Register a new card to the database with the given name. Returns True on success, False on failure."""
 	rgb_led.set_color(False, False, True)  # Blue for registration mode
 	if name is None or name.strip() == "":
 		rgb_led.blink_color(True, False, False)  # Red for error
@@ -117,90 +122,77 @@ def registerCard(name):
 	
 	rgb_led.blink_color(False, True, False)  # Green for success
 	return True
-	
+
+def write_to_lcd(message, line=0):
+	"""Helper function to write a message to the LCD on a specific line (0 or 1)."""
+	lcd.move_to(0, line)
+	text = str(message)
+	if len(text) < 16:
+		text = text + (" " * (16 - len(text)))
+	else:
+		text = text[:16]
+	lcd.putstr(text)
+
+
+# Main loop setup
+next_time_update = time.ticks_ms() + TIME_UPDATE_INTERVAL_MILLIS
+next_lcd_update = time.ticks_ms() + LCD_UPDATE_INTERVAL_MILLIS
+now = None
 
 # Main loop
 while True:
-	# RGB led example
-	# rgb_led.set_color(True, False, False) # Red
-	# time.sleep(0.5)
-	# rgb_led.set_color(False, True, False) # Green
-	# time.sleep(0.5)
-    # rgb_led.set_color(False, False, True) # Blue
-    # time.sleep(0.5)
-
-    # RTC example
-	# now = rtc.date_time()
-	# if now is None:
-	# 	time.sleep(1)
-	# 	continue
-	# y, m, d, w, hh, mm, ss = now
-	# print("{:04d}-{:02d}-{:02d} ({}) {:02d}:{:02d}:{:02d}".format(y, m, d, w, hh, mm, ss))
-	# time.sleep(1)
+	# Update time from RTC
+	if time.ticks_ms() >= next_time_update:
+		now = rtc.date_time()
+		next_time_update = time.ticks_ms() + TIME_UPDATE_INTERVAL_MILLIS
 	
-	# LCD example
-	# now = rtc.date_time()
-	# lcd.clear()
-	# lcd.move_to(0, 0)
-	# lcd.putstr("I2C: 0x{:02X}".format(lcd_addr))
-	# if now is not None:
-	# 	y, m, d, w, hh, mm, ss = now
-	# 	lcd.move_to(0, 1)
-	# 	lcd.putstr("{:02d}:{:02d}:{:02d}".format(hh, mm, ss))
-	# else:
-	# 	lcd.move_to(0, 1)
-	# 	lcd.putstr("No RTC data")
-	# time.sleep(1)
+	# Update LCD with current info
+	if time.ticks_ms() >= next_lcd_update:
+		write_to_lcd("Please scan card", line=0)
 
-	# RFID reader example
-	# stat, bits = rfid.request(rfid.REQIDL)
-	# if stat == rfid.OK:
-	# 	stat, uid = rfid.SelectTagSN()
-	# 	if stat == rfid.OK:
-	# 		print("Card detected! UID: {}".format([hex(b) for b in uid]))
-	# 		rgb_led.set_color(False, True, False)  # Green for success
-	# 		time.sleep(0.5)
-	# 		rgb_led.set_color(False, False, False)  # Off
-	# 	else:
-	# 		print("Could not read card UID")
+		if now is not None:
+			y, m, d, w, hh, mm, ss = now
+			write_to_lcd("{:02d}:{:02d}:{:02d} | {:02d}.{:02d}".format(hh, mm, ss, d, m), line=1)	
+		else:
+			write_to_lcd("No RTC data", line=1)
+
+		next_lcd_update = time.ticks_ms() + LCD_UPDATE_INTERVAL_MILLIS
 
 	# Handle web server requests
-	conn, addr = s.accept()
-	request = conn.recv(1024).decode()
-	header_end = request.find('\r\n\r\n') + 4
-	body = request[header_end:].strip()
-	json_payload = json.loads(body) if body else {}
+	# conn, addr = s.accept()
+	# request = conn.recv(1024).decode()
+	# header_end = request.find('\r\n\r\n') + 4
+	# body = request[header_end:].strip()
+	# json_payload = json.loads(body) if body else {}
 
-	# server index.html for root route
-	if 'GET / ' in request:
-		serve_file(conn, 'index.html')
+	# # server index.html for root route
+	# if 'GET / ' in request:
+	# 	serve_file(conn, 'index.html')
 	
-	# New card registration request route
-	elif 'POST /registerCard' in request:
-		name = json_payload.get('name')
-		if name is None or name.strip() == "":
-			send_json(conn, '400 Bad Request', {
-				'error': 'Name is required to register a card',
-			})
-		elif registerCard(name):
-			send_json(conn, '200 OK', {
-				'message': 'Card registered successfully',
-			})
-		else:
-			send_json(conn, '400 Bad Request', {
-				'error': 'Failed to register card',
-			})
+	# # New card registration request route
+	# elif 'POST /registerCard' in request:
+	# 	name = json_payload.get('name')
+	# 	if name is None or name.strip() == "":
+	# 		send_json(conn, '400 Bad Request', {
+	# 			'error': 'Name is required to register a card',
+	# 		})
+	# 	elif registerCard(name):
+	# 		send_json(conn, '200 OK', {
+	# 			'message': 'Card registered successfully',
+	# 		})
+	# 	else:
+	# 		send_json(conn, '400 Bad Request', {
+	# 			'error': 'Failed to register card',
+	# 		})
 	
-	# Registered cards retrieval route
-	elif 'GET /registeredCards' in request:
-		known_cards = attendance_db.load_json_file(attendance_db.known_cards_filename)
-		send_json(conn, '200 OK', known_cards)
+	# # Registered cards retrieval route
+	# elif 'GET /registeredCards' in request:
+	# 	known_cards = attendance_db.load_json_file(attendance_db.known_cards_filename)
+	# 	send_json(conn, '200 OK', known_cards)
 		
-	else:
-		send_json(conn, '404 Not Found', {
-			'error': 'Route not found',
-		})
+	# else:
+	# 	send_json(conn, '404 Not Found', {
+	# 		'error': 'Route not found',
+	# 	})
 
-	conn.close()
-
-pass
+	# conn.close()
