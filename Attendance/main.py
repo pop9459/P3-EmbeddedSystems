@@ -30,8 +30,8 @@ LED_R_PIN = 20
 
 SET_RTC_ON_BOOT = False
 REGISTER_TIME_WINDOW_SECONDS = 30
-TIME_UPDATE_INTERVAL_MILLIS = 500
-LCD_UPDATE_INTERVAL_MILLIS = 500
+TIME_UPDATE_INTERVAL_MILLIS = 250
+LCD_UPDATE_INTERVAL_MILLIS = 250
 
 # Initialize peripherals
 # RGB LED initialization
@@ -80,6 +80,7 @@ connect_wifi()
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('', 80))
 s.listen(5)
+s.settimeout(0.2) # Important - socket will block execution otherwise
 
 
 # Helper functions
@@ -158,41 +159,49 @@ while True:
 
 		next_lcd_update = time.ticks_ms() + LCD_UPDATE_INTERVAL_MILLIS
 
-	# Handle web server requests
-	# conn, addr = s.accept()
-	# request = conn.recv(1024).decode()
-	# header_end = request.find('\r\n\r\n') + 4
-	# body = request[header_end:].strip()
-	# json_payload = json.loads(body) if body else {}
+	# Handle web server requests without blocking periodic tasks.
+	try:
+		conn, addr = s.accept()
+	except OSError:
+		conn = None
 
-	# # server index.html for root route
-	# if 'GET / ' in request:
-	# 	serve_file(conn, 'index.html')
-	
-	# # New card registration request route
-	# elif 'POST /registerCard' in request:
-	# 	name = json_payload.get('name')
-	# 	if name is None or name.strip() == "":
-	# 		send_json(conn, '400 Bad Request', {
-	# 			'error': 'Name is required to register a card',
-	# 		})
-	# 	elif registerCard(name):
-	# 		send_json(conn, '200 OK', {
-	# 			'message': 'Card registered successfully',
-	# 		})
-	# 	else:
-	# 		send_json(conn, '400 Bad Request', {
-	# 			'error': 'Failed to register card',
-	# 		})
-	
-	# # Registered cards retrieval route
-	# elif 'GET /registeredCards' in request:
-	# 	known_cards = attendance_db.load_json_file(attendance_db.known_cards_filename)
-	# 	send_json(conn, '200 OK', known_cards)
-		
-	# else:
-	# 	send_json(conn, '404 Not Found', {
-	# 		'error': 'Route not found',
-	# 	})
+	if conn is not None:
+		try:
+			request = conn.recv(1024).decode()
+			header_end = request.find('\r\n\r\n')
+			body = request[header_end + 4:].strip() if header_end != -1 else ""
+			json_payload = json.loads(body) if body else {}
 
-	# conn.close()
+			# server index.html for root route
+			if 'GET / ' in request:
+				serve_file(conn, 'index.html')
+			
+			# New card registration request route
+			elif 'POST /registerCard' in request:
+				name = json_payload.get('name')
+				if name is None or name.strip() == "":
+					send_json(conn, '400 Bad Request', {
+						'error': 'Name is required to register a card',
+					})
+				elif registerCard(name):
+					send_json(conn, '200 OK', {
+						'message': 'Card registered successfully',
+					})
+				else:
+					send_json(conn, '400 Bad Request', {
+						'error': 'Failed to register card',
+					})
+			
+			# Registered cards retrieval route
+			elif 'GET /registeredCards' in request:
+				known_cards = attendance_db.load_json_file(attendance_db.known_cards_filename)
+				send_json(conn, '200 OK', known_cards)
+				
+			else:
+				send_json(conn, '404 Not Found', {
+					'error': 'Route not found',
+				})
+		except Exception:
+			pass
+		finally:
+			conn.close()
