@@ -11,7 +11,7 @@
     <button onclick="registerCard()">Register card</button>
 
     <h2 id="today">Today's date</h2>
-    <h2>Today's attendance</h2>
+    <h2>Cards and today's attendance</h2>
     <table id="attendance-records" border="1">
         <thead>
             <tr>
@@ -19,18 +19,6 @@
                 <th>UID</th>
                 <th>Check in</th>
                 <th>Check out</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-   
-    <h2>Registered Cards</h2>
-
-    <table id="registered-cards" border="1">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>UID</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -94,22 +82,10 @@
         async function fetchRegisteredCards() {
             try {
                 const data = await fetchJson('/registeredCards', 'GET');
-                const table = document.getElementById('registered-cards');
-                const tableBody = table.querySelector('tbody');
-                tableBody.innerHTML = '';
-
-                // Backend returns known cards as an object map: { uid: name }
+                // Backend returns known cards as an object map: { uid: name }.
                 const cards = Array.isArray(data)
                     ? data
                     : Object.entries(data).map(([uid, name]) => ({ uid, name }));
-
-                cards.forEach(card => {
-                    const row = tableBody.insertRow();
-                    const nameCell = row.insertCell(0);
-                    const uidCell = row.insertCell(1);
-                    nameCell.textContent = card.name;
-                    uidCell.textContent = card.uid;
-                });
 
                 return cards;
             } catch (error) {
@@ -138,18 +114,47 @@
                 const tableBody = table.querySelector('tbody');
                 tableBody.innerHTML = '';
 
-                const rows = Object.entries(records || {});
-                rows.forEach(([uid, times]) => {
+                const rows = cards.map(card => {
+                    const times = (records && records[card.uid]) ? records[card.uid] : [];
+                    return {
+                        name: card.name,
+                        uid: card.uid,
+                        checkIn: times[0] || '-',
+                        checkOut: times[1] || '-'
+                    };
+                });
+
+                // Show scanned UIDs even if they no longer exist in known cards.
+                Object.entries(records || {}).forEach(([uid, times]) => {
+                    if (!nameByUid[uid]) {
+                        rows.push({
+                            name: 'Unknown',
+                            uid,
+                            checkIn: times[0] || '-',
+                            checkOut: times[1] || '-'
+                        });
+                    }
+                });
+
+                rows.forEach(item => {
                     const row = tableBody.insertRow();
                     const nameCell = row.insertCell(0);
                     const uidCell = row.insertCell(1);
                     const checkInCell = row.insertCell(2);
                     const checkOutCell = row.insertCell(3);
 
-                    nameCell.textContent = nameByUid[uid] || 'Unknown';
-                    uidCell.textContent = uid;
-                    checkInCell.textContent = (times && times[0]) ? times[0] : '-';
-                    checkOutCell.textContent = (times && times[1]) ? times[1] : '-';
+                    if (item.checkOut !== '-') {
+                        row.style.backgroundColor = '#ffd8a8';
+                    } else if (item.checkIn !== '-') {
+                        row.style.backgroundColor = '#b7efc5';
+                    } else {
+                        row.style.backgroundColor = '';
+                    }
+
+                    nameCell.textContent = item.name;
+                    uidCell.textContent = item.uid;
+                    checkInCell.textContent = item.checkIn;
+                    checkOutCell.textContent = item.checkOut;
                 });
             } catch (error) {
                 console.error('Error:', error);
