@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance tracker</title>
+</head>
+<body>
+    <h1>Attendance tracker</h1>
+    <input type="text" id="name" placeholder="Enter name">
+    <button onclick="registerCard()">Register card</button>
+
+    
+    <h2>Todays date: {{ today }}</h2>
+    
+    <table>
+
+    </table>
+   
+    <h2>Registered Cards</h2>
+
+    <table id="registered-cards"></table>
+    
+    <script>
+        async function registerCard() {
+            try {
+                const name = document.getElementById('name').value.trim();
+                const response = await fetch('/registerCard', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name })
+                });
+                const data = await response.json();
+                fetchRegisteredCards(); // Refresh the list of registered cards
+                alert(data.message);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function fetchRegisteredCards() {
+            try {
+                const response = await fetch('/registeredCards', { method: 'GET' });
+                const data = await response.json();
+                const table = document.getElementById('registered-cards');
+                table.innerHTML = ''; // Clear existing rows
+
+                // Backend returns known cards as an object map: { uid: name }
+                const cards = Array.isArray(data)
+                    ? data
+                    : Object.entries(data).map(([uid, name]) => ({ uid, name }));
+
+                cards.forEach(card => {
+                    const row = table.insertRow();
+                    const nameCell = row.insertCell(0);
+                    const uidCell = row.insertCell(1);
+                    nameCell.textContent = card.name;
+                    uidCell.textContent = card.uid;
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        fetchRegisteredCards(); // Fetch registered cards on page load
+    </script>
+</body>
+</html>
