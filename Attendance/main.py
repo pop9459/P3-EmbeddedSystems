@@ -3,7 +3,7 @@
 from rgb_led import RgbLed
 from machine import Pin, I2C
 import ds1302
-import buzzer
+import buzzer as Buzzer
 import machine_i2c_lcd
 from mfrc522 import MFRC522
 from attendance_db import AttendanceDB
@@ -30,9 +30,9 @@ LED_R_PIN = 20
 
 SET_RTC_ON_BOOT = False
 REGISTER_TIME_WINDOW_SECONDS = 30
+RFID_POLL_INTERVAL_MILLIS = 100
 TIME_UPDATE_INTERVAL_MILLIS = 250
 LCD_UPDATE_INTERVAL_MILLIS = 250
-RFID_POLL_INTERVAL_MILLIS = 100
 
 # Initialize peripherals
 # RGB LED initialization
@@ -50,7 +50,7 @@ if SET_RTC_ON_BOOT:
 	rtc.start()
 
 # Buzzer initialization
-buzzer = buzzer.Buzzer(Pin(BUZZER_PIN))
+buzzer = Buzzer.Buzzer(Pin(BUZZER_PIN))
 
 # LCD initialization
 i2c = I2C(0, sda=Pin(LCD_SDA_PIN), scl=Pin(LCD_SCL_PIN), freq=400000)
@@ -134,6 +134,40 @@ def registerCard(name):
 	rgb_led.blink_color(False, True, False)  # Green for success
 	return True
 
+
+def checkIn(uid, timestamp):
+	"""Check in or out a card with the given UID and timestamp. Returns (success, message)."""
+	success, message = attendance_db.check_in(uid, timestamp)
+	if success:
+		name = attendance_db.load_json_file(attendance_db.known_cards_filename).get(uid, "Unknown")
+		if(message == "Checked in"):
+			rgb_led.set_color(False, True, False)  # Green for success
+			write_to_lcd("Welcome", line=0)
+			write_to_lcd("{}".format(name), line=1)
+			buzzer.play_rising_tone()
+			rgb_led.off()
+		elif(message == "Checked out"):
+			rgb_led.set_color(True, True, False)  # Yellow for check-out
+			write_to_lcd("Goodbye", line=0)
+			write_to_lcd("{}".format(name), line=1)
+			buzzer.play_falling_tone()
+			rgb_led.off()
+	else:
+		if message == "Card not registered":
+			rgb_led.set_color(True, False, False)
+			write_to_lcd("Unknown card", line=0)
+			buzzer.play_error_tone()
+			rgb_led.off()
+		elif message == "Already checked in and out for today":
+			rgb_led.set_color(True, False, False)  # Red for already checked in/out
+			write_to_lcd("Already out", line=0)
+			buzzer.play_error_tone()
+			rgb_led.off()
+	
+	time.sleep(2)  # Keep message on LCD for a moment before clearing
+	return success, message
+
+
 def write_to_lcd(message, line=0):
 	"""Helper function to write a message to the LCD on a specific line (0 or 1)."""
 	lcd.move_to(0, line)
@@ -174,8 +208,10 @@ while True:
 	if time.ticks_ms() >= next_rfid_read:
 		uid = readRfidCard()
 		if uid is not None and now is not None:
-			rgb_led.blink_color(False, True, False)  # Green for card detected
-			next_rfid_read = time.ticks_ms() + RFID_POLL_INTERVAL_MILLIS
+			success, message = checkIn(uid, now)
+			print("Card UID: {}, Result: {}, Message: {}".format(uid, success, message))
+		
+		next_rfid_read = time.ticks_ms() + RFID_POLL_INTERVAL_MILLIS
 
 	# Handle web server requests without blocking periodic tasks.
 	try:
@@ -194,6 +230,11 @@ while True:
 			if 'GET / ' in request:
 				serve_file(conn, 'index.html')
 			
+			# Get attendance records route
+			elif 'GET /attendanceRecords' in request:
+				todays_records = attendance_db.get_attendance_records_by_day(now)
+				send_json(conn, '200 OK', todays_records)
+
 			# New card registration request route
 			elif 'POST /registerCard' in request:
 				name = json_payload.get('name')
@@ -214,7 +255,14 @@ while True:
 			elif 'GET /registeredCards' in request:
 				known_cards = attendance_db.load_json_file(attendance_db.known_cards_filename)
 				send_json(conn, '200 OK', known_cards)
-				
+			
+			elif 'POST /clearDatabase' in request:
+				attendance_db.clear_db()
+				send_json(conn, '200 OK', {
+					'message': 'Database cleared successfully',
+				})
+				rgb_led.blink_color(True, True, True, delay_ms=1000)  # White blink to indicate DB cleared
+
 			else:
 				send_json(conn, '404 Not Found', {
 					'error': 'Route not found',

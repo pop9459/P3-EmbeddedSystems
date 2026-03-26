@@ -7,6 +7,9 @@ class RgbLed:
         self.g = Pin(g_pin, Pin.OUT)
         self.b = Pin(b_pin, Pin.OUT)
 
+    def off(self):
+        self.set_color(False, False, False)
+
     def set_color(self, r: bool, g: bool, b: bool):
         self.r.value(r)
         self.g.value(g)
