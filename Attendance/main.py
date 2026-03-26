@@ -32,6 +32,7 @@ SET_RTC_ON_BOOT = False
 REGISTER_TIME_WINDOW_SECONDS = 30
 TIME_UPDATE_INTERVAL_MILLIS = 250
 LCD_UPDATE_INTERVAL_MILLIS = 250
+RFID_POLL_INTERVAL_MILLIS = 100
 
 # Initialize peripherals
 # RGB LED initialization
@@ -93,13 +94,22 @@ def uid_to_key(uid):
 
 
 def readRfidCard():
-	start_time = time.time()
-	while time.time() - start_time < REGISTER_TIME_WINDOW_SECONDS:
-		stat, bits = rfid.request(rfid.REQIDL)
+	"""Read an RFID card and return its UID as a string key, or None if no card is present."""
+	stat, bits = rfid.request(rfid.REQIDL)
+	if stat == rfid.OK:
+		stat, uid = rfid.SelectTagSN()
 		if stat == rfid.OK:
-			stat, uid = rfid.SelectTagSN()
-			if stat == rfid.OK:
-				return uid_to_key(uid)
+			return uid_to_key(uid)
+	return None
+
+def readRfidCardForTime(time_window_seconds):
+	"""Attempt to read an RFID card for a specified time window."""
+	start_time = time.time()
+	while time.time() - start_time < time_window_seconds:
+		uid = readRfidCard()
+		if uid is not None:
+			return uid
+		time.sleep_ms(RFID_POLL_INTERVAL_MILLIS)
 			
 	# No card detected within the time window
 	return None
@@ -113,7 +123,7 @@ def registerCard(name):
 		return False
 	
 	name = name.strip() 
-	uid = readRfidCard()
+	uid = readRfidCardForTime(REGISTER_TIME_WINDOW_SECONDS)
 	
 	if uid is  None:
 		rgb_led.blink_color(True, False, False)  # Red for error
@@ -138,6 +148,7 @@ def write_to_lcd(message, line=0):
 # Main loop setup
 next_time_update = time.ticks_ms() + TIME_UPDATE_INTERVAL_MILLIS
 next_lcd_update = time.ticks_ms() + LCD_UPDATE_INTERVAL_MILLIS
+next_rfid_read = time.ticks_ms() + RFID_POLL_INTERVAL_MILLIS
 now = None
 
 # Main loop
@@ -158,6 +169,13 @@ while True:
 			write_to_lcd("No RTC data", line=1)
 
 		next_lcd_update = time.ticks_ms() + LCD_UPDATE_INTERVAL_MILLIS
+
+	# Read RFID card and check in/out
+	if time.ticks_ms() >= next_rfid_read:
+		uid = readRfidCard()
+		if uid is not None and now is not None:
+			rgb_led.blink_color(False, True, False)  # Green for card detected
+			next_rfid_read = time.ticks_ms() + RFID_POLL_INTERVAL_MILLIS
 
 	# Handle web server requests without blocking periodic tasks.
 	try:
