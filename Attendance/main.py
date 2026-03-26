@@ -101,17 +101,21 @@ def readRfidCard():
 
 
 def registerCard(name): 
+	rgb_led.set_color(False, False, True)  # Blue for registration mode
 	if name is None or name.strip() == "":
+		rgb_led.blink_color(True, False, False)  # Red for error
 		return False
 	
 	name = name.strip() 
 	uid = readRfidCard()
 	
 	if uid is  None:
+		rgb_led.blink_color(True, False, False)  # Red for error
 		return False
 	
 	attendance_db.register_card(uid=uid, name=name)
 	
+	rgb_led.blink_color(False, True, False)  # Green for success
 	return True
 	
 
