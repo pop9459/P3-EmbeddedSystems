@@ -1,9 +1,14 @@
 # Digital portfolio Embedded systems Y1 P3
-Name: Peter Kapsiar
-Student ID: 5486866
+-  Name: Peter Kapsiar
+- Student ID: 5486866
+- Repository: https://github.com/pop9459/P3-EmbeddedSystems/
 
 ## Blink with hardware reset
+### Description
+This is a simple test that blinks an LED on and off. With this we can verify that the microcontroller works properly. The code first imports the libraries for pin controll and time functions. It defines the output pins for the LEDs. In this case I used one external LED and also the picos built in LED. After that it just enters in a loop where it turns the leds on and off with some delays in between.
+
 ### Code
+`main.py`
 ```python
 from machine import Pin
 import utime
@@ -20,16 +25,19 @@ while True:
     led_external.low()
     utime.sleep_ms(800)
 ```
-
-### Description
-This is a simple test that blinks an LED on and off. With this we can verify that the microcontroller works properly. The code first imports the libraries for pin controll and time functions. It defines the output pins for the LEDs. In this case I used one external LED and also the picos built in LED. After that it just enters in a loop where it turns the leds on and off with some delays in between.
+### Schematic
+![schematic](./BlinkWithExternalHardwareReset/schematic.png)
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/IMG_5917.JPEG)
+![breadboard setup](./BlinkWithExternalHardwareReset/output.JPEG)
 
 ## Mario pico
 
+### Description
+A short practice program that draws a pyramid shape to the output terminal using printable characters. It defines one variable at the begining which controlls the size of the pyramid drawing. For the first pyramid I just use a single character. It starts drawing it from the top so each line will get N "#" symbols on the N-th line. The second pyramid works on the same principle but prints diffenet symbols based on if it is printing the edge of the pyramid or the middle part 
+
 ### Code
+`main.py`
 ```python
 pyramidSize = 10
 
@@ -58,16 +66,19 @@ for y in range(pyramidSize):
 
 ```
 
-### Description
-A short practice program that draws a pyramid shape to the output terminal using printable characters. It defines one variable at the begining which controlls the size of the pyramid drawing. For the first pyramid I just use a single character. It starts drawing it from the top so each line will get N "#" symbols on the N-th line. The second pyramid works on the same principle but prints diffenet symbols based on if it is printing the edge of the pyramid or the middle part 
+### Schematic
+Not applicable for this project since it only prints to the console.
 
 ### Output
-![console output](/MarioPico/image.png)
+![console output](/MarioPico/output.png)
 
 ## 7-Segments Voltmeter (0..10V)
 
+### Description
+TODO
+
 ### Code
-main.py
+`main.py`
 ```python
 from segment_display import Display
 from machine import Pin, ADC
@@ -126,7 +137,8 @@ while True:
 
         next_update_time = time.ticks_add(current_time, update_delay_ms)
 ```
-segment_display.py
+
+`segment_display.py`
 ```python
 from machine import Pin
 import time
@@ -200,24 +212,125 @@ class Display():
 
         time.sleep_us(self.digit_time_off_us)
 ```
-### Description
+
+### Schematic
+![schematic](./7SegmentVoltmeter/schematic.png)
 
 ### Output
-![breadboard setup](/7SegmentVoltmeter/IMG_5929.JPEG)
+![breadboard setup](/7SegmentVoltmeter/output.JPEG)
 
 ## RTC and temperature on LCD-display
 
-### Code
-```python
-
-```
-
 ### Description
 
+### Code
+`main.py`
+```python
+from machine import Pin, SoftI2C, I2C, ADC
+from machine_i2c_lcd import I2cLcd
+import time
+import ds1302
+
+# RTC constants
+RTC_CLK_PIN = 5
+RTC_DAT_PIN = 7
+RTC_RST_PIN = 8
+
+# I2C LCD constants
+I2C_NUM_ROWS = 2
+I2C_NUM_COLS = 16
+
+LCD_SDA_PIN = 16
+LCD_SCL_PIN = 17
+
+# RTC initialization
+rtc_module = ds1302.DS1302(Pin(RTC_CLK_PIN), Pin(RTC_DAT_PIN), Pin(RTC_RST_PIN))
+
+# LCD initialization
+i2c = I2C(0, scl=Pin(LCD_SCL_PIN), sda=Pin(LCD_SDA_PIN), freq=400000)
+devices = i2c.scan()
+
+i2c_addr = None
+for d in devices:
+    if d in range(0x20, 0x28):  # PCF8574 I2C address range
+        print(f"Setting i2c address: {hex(d)}")
+        i2c_addr = d
+        break
+
+lcd = I2cLcd(i2c, i2c_addr, I2C_NUM_ROWS, I2C_NUM_COLS)
+lcd.backlight_on()
+lcd.hide_cursor()
+lcd.clear()
+
+# LM35 initialization
+LM35 = ADC(Pin(26)) 
+
+# set the rtc module
+#rtc_module.date_time([2026, 3, 8, 7, 19, 50, 0]) # format: [year, month, day, weekday, hour, minute, second]
+
+# Main loop variables
+current_time = time.time()
+tmp_read_update_interval = 3  # seconds
+next_tmp_read_time = current_time # Read temp every 10 seconds
+
+rtc_update_interval = 1  # seconds
+next_rtc_update_time = current_time  # Update RTC display every second
+
+lcd_update_interval = 0.5  # seconds
+next_lcd_update_time = current_time# Update LCD every second
+
+try:
+    while True:
+        current_time = time.time()
+
+        # Get data from temp sensor
+        if current_time >= next_tmp_read_time:
+            LM35raw = LM35.read_u16()
+            LM35temp = (LM35raw / 65535) * 3.3 * 100  # Convert to Celsius
+
+            next_tmp_read_time = current_time + tmp_read_update_interval 
+
+        # Get data from DS1302 RTC
+        if current_time >= next_rtc_update_time:
+            date_time = rtc_module.date_time()
+
+            next_rtc_update_time = current_time + rtc_update_interval
+
+        # Debug print
+        # if date_time is not None:
+        #     print(f"Current Date and Time: {date_time[2]:02d}.{date_time[1]:02d}.{date_time[0]:04d} {date_time[4]:02d}:{date_time[5]:02d}:{date_time[6]:02d}")
+        # else:
+        #     print("Current Date and Time: unavailable")
+
+        # Display on LCD
+        if current_time >= next_lcd_update_time:
+            if date_time is not None:
+                lcd.move_to(0, 0)
+                lcd.putstr(f"{date_time[2]:02d}.{date_time[1]:02d}.  {date_time[4]:02d}:{date_time[5]:02d}:{date_time[6]:02d}")
+            
+            lcd.move_to(0, 1)
+            lcd.putstr(f"Temp: {LM35temp:02.1f}C")
+
+            next_lcd_update_time = current_time + lcd_update_interval
+
+except KeyboardInterrupt:
+    print("Exiting program.")
+    lcd.backlight_off()
+```
+#### External libraries used:
+- LCD API library: https://github.com/dhylands/python_lcd/blob/master/lcd/lcd_api.py
+- Machine I2C LCD library: https://github.com/dhylands/python_lcd/blob/master/lcd/machine_i2c_lcd.py
+- ds1302 Real Time Clock library: https://github.com/omarbenhamid/micropython-ds1302-rtc/blob/master/ds1302.py
+
+### Schematic
+![schematic](./RTC_temp_LCD/schematic.png)
+
 ### Output
-![breadboard setup](/RTC_temp_LCD/IMG_5931.JPEG) 
+![breadboard setup](/RTC_temp_LCD/output.JPEG) 
 
 ## Dino cheater (HID)
+
+### Description
 
 ### Code
 ```python
@@ -313,12 +426,15 @@ except KeyboardInterrupt:
     lcd.backlight_off()
 ```
 
-### Description
+### Schematic
+![schematic](./DinoCheater/schematic.png)
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
+![breadboard setup](./DinoCheater/output.JPEG)
 
 ## Analog joystick (HID)
+
+### Description
 
 ### Code
 ```python
@@ -403,55 +519,55 @@ while True:
     time.sleep(0.01)  # Small delay to prevent excessive CPU usage
 ```
 
-### Description
+### Schematic
+![schematic](./AnalogJoystick/schematic.png)
 
 ### Output
-![breadboard setup](/AnalogJoystick/IMG_5918.JPEG)
+![breadboard setup](./AnalogJoystick/output.JPEG)
 
 ## WiFi scanner
 
+### Description
+
 ### Code
 ```python
 
 ```
 
-### Description
+### Schematic
+Not applicable for this project
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
+![breadboard setup](./WiFiScanner/output.png)
 
 ## Controlling stuff (Webserver)
 
+### Description
+
 ### Code
 ```python
 
 ```
 
-### Description
+### Schematic
+![schematic](./ControllingStuff/schematic.png)
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
+![breadboard setup](./ControllingStuff/output.JPEG)
+![web interface](./ControllingStuff/output2.png)
 
 ## Attendance (RFID, RTC, web and LCD)
 
-### Code
-```python
-
-```
-
 ### Description
-
-### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
-
-## Solo pico project (not mandatory) 
 
 ### Code
 ```python
 
 ```
 
-### Description
+### Schematic
+![schematic](./Attendance/schematic.png)
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/image.jpg)
+![breadboard setup](./Attendance/output.JPEG)
+![web interface](./Attendance/output2.png)
