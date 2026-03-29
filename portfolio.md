@@ -380,6 +380,7 @@ Components used:
 ![schematic](./DinoCheater/schematic.png)
 
 ### Code
+`main.py`
 ```python
 # Circuit python
 import time
@@ -522,8 +523,21 @@ while True:
 ## Analog joystick (HID)
 
 ### Description
+This project makes the Rpi pico act as a HID keyboard that is controlled by a 2-axis analog joystick and a push button. This setup can be used to play simple games like tertis or super mario bros by mapping the joystick movements to the arrow keys. 
+
+The code relies on the Adafruit HID library to send keyboard inputs to the PC. It reads the values from the joystick and the button and based on that it sends the corresponding key presses. The joystick has a deadzone to prevent random missinputs when the joystick is near the center position. 
+
+Components used:
+- 1x RPI Pico W
+- 1x 2-axis analog joystick
+- 1x 10kΩ resistor
+- 1x push button
+
+### Schematic
+![schematic](./AnalogJoystick/schematic.png)
 
 ### Code
+`main.py`
 ```python
 import time
 import board
@@ -606,8 +620,9 @@ while True:
     time.sleep(0.01)  # Small delay to prevent excessive CPU usage
 ```
 
-### Schematic
-![schematic](./AnalogJoystick/schematic.png)
+#### External libraries used:
+- Adafruit HID keyboard library: https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keyboard.py
+- Adafruit HID keycode library: https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keycode.py
 
 ### Output
 ![breadboard setup](./AnalogJoystick/output.JPEG)
