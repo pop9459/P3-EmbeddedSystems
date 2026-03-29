@@ -5,7 +5,19 @@
 
 ## Blink with hardware reset
 ### Description
-This is a simple test that blinks an LED on and off. With this we can verify that the microcontroller works properly. The code first imports the libraries for pin controll and time functions. It defines the output pins for the LEDs. In this case I used one external LED and also the picos built in LED. After that it just enters in a loop where it turns the leds on and off with some delays in between.
+This is a simple test that blinks an LED on and off. With this we can verify that the microcontroller works properly. It also displays how to use an external hardware reset button to reset the microcontroller.
+
+The code first imports the libraries for pin controll and time functions. It defines the 
+output pins for the LEDs. In this case I used one external LED and also the picos built in LED. After that it just enters in a loop where it turns the leds on and off with some delays in between.
+
+Components used:
+- 1x RPI Pico W
+- 1x LED
+- 1x 10KΩ resistor
+- push button
+
+### Schematic
+![schematic](./BlinkWithExternalHardwareReset/schematic.png)
 
 ### Code
 `main.py`
@@ -25,8 +37,6 @@ while True:
     led_external.low()
     utime.sleep_ms(800)
 ```
-### Schematic
-![schematic](./BlinkWithExternalHardwareReset/schematic.png)
 
 ### Output
 ![breadboard setup](./BlinkWithExternalHardwareReset/output.JPEG)
@@ -34,7 +44,13 @@ while True:
 ## Mario pico
 
 ### Description
-A short practice program that draws a pyramid shape to the output terminal using printable characters. It defines one variable at the begining which controlls the size of the pyramid drawing. For the first pyramid I just use a single character. It starts drawing it from the top so each line will get N "#" symbols on the N-th line. The second pyramid works on the same principle but prints diffenet symbols based on if it is printing the edge of the pyramid or the middle part 
+A short practice program that draws a pyramid shape to the output terminal using printable characters. It defines one variable at the begining which controlls the size of the pyramid drawing. For the first pyramid I just use a single character. It starts drawing it from the top so each line will get N "#" symbols on the N-th line. The second pyramid works on the same principle but prints diffenet symbols based on if it is printing the edge of the pyramid or the middle part.
+
+Components used:
+- 1x RPI Pico W
+
+### Schematic
+Not applicable for this project since it only prints to the console.
 
 ### Code
 `main.py`
@@ -66,16 +82,28 @@ for y in range(pyramidSize):
 
 ```
 
-### Schematic
-Not applicable for this project since it only prints to the console.
-
 ### Output
 ![console output](/MarioPico/output.png)
 
 ## 7-Segments Voltmeter (0..10V)
 
 ### Description
-TODO
+This project uses a voltage divider to measure voltages from 0 to 10V using the Pico's ADC which can only measure up to 3.3V. The voltage is then displayed on a 4-digit 7-segment display. 
+
+In the code the rpi calculates the voltage by multiplying the ADC reading by the voltage divider ratio. The voltage is then displayed on the 4-digit 7-segment display using a custom library that I created for controlling the display.
+
+To controll the display the code uses a technique called multiplexing. This means that it turns on one digit at a time and sets the segments for that digit. It does this very quickly so that it appears that all digits are on at the same time. This is done to reduce the number of pins needed to control the display. To turn on a digit it connects the common cathode of that digit to ground using one of the transistors. The segments are then controlled by setting the corresponding pins high or low. To streamline this process the library has a predefined list of the segment values for each digit from 0 to 9. The library also has a function to write a value to the display which takes care of the multiplexing and segment control.
+
+Components used:
+- 1x RPI Pico W
+- 1x 4-digit 7-segment display
+- 5x 10KΩ resistor
+- 1x 4.7KΩ resistor
+- 8x 220Ω resistor
+- 4x BC547C transistor 
+
+### Schematic
+![schematic](./7SegmentVoltmeter/schematic.png)
 
 ### Code
 `main.py`
@@ -212,9 +240,6 @@ class Display():
 
         time.sleep_us(self.digit_time_off_us)
 ```
-
-### Schematic
-![schematic](./7SegmentVoltmeter/schematic.png)
 
 ### Output
 ![breadboard setup](/7SegmentVoltmeter/output.JPEG)
