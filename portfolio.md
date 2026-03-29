@@ -802,14 +802,186 @@ PASSWORD = "YOUR_NET_PASS"
 ## Controlling stuff (Webserver)
 
 ### Description
+This project creates a simple web interface to control a physical component and retrieve sensor over the web using the RPI Pico W. 
 
-### Code
-```python
+This project features a wrapper library for the web server related stuff to keep the main code clean and focused on the hardware control logic. The library can handle conecting to a wifi network and serving responses either as json or by serving files.
 
-```
+The server has 3 endpoints: the root endpoint which serves the `index.html` file, via the web interface we can then call the `/hardwareState` endpoint to get the current state of the button and the internal temperature sensor and we can call the `/toggleLED` endpoint to toggle the state of the LED. 
+
+Components used:
+- 1x RPI Pico W
+- 1x push button
+- 1x LED
+- 2x 10kΩ resistor
 
 ### Schematic
 ![schematic](./ControllingStuff/schematic.png)
+
+### Code
+`main.py`
+```python
+from machine import Pin, ADC
+import socket
+from web_server import connect_wifi, send_json, serve_file
+
+BUTTON_PIN = 15
+LED_PIN = 16
+
+button_pin = Pin(BUTTON_PIN, Pin.IN)
+led_pin = Pin(LED_PIN, Pin.OUT)
+temp_sensor = ADC(4)
+
+# Connect to WiFi
+connect_wifi()
+
+# create a TCP socket for the web server
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(('', 80))
+s.listen(5)
+
+def read_internal_temperature():
+    # Read the raw ADC value
+    adc_value = temp_sensor.read_u16()
+
+    # Convert ADC value to voltage
+    voltage = adc_value * (3.3 / 65535.0)
+
+    # Temperature calculation based on sensor characteristics
+    temperature_celsius = 27 - (voltage - 0.706) / 0.001721
+
+    return temperature_celsius
+
+while True:
+    conn, addr = s.accept()
+    print('Client connected from', addr)
+    request = conn.recv(1024).decode()
+    print('Request:', request)
+
+    if 'GET / ' in request:
+        serve_file(conn, 'index.html')
+    elif 'GET /hardwareState' in request:
+        send_json(conn, '200 OK', {
+            'buttonState': not button_pin.value(),
+            'cpuTemp': read_internal_temperature(),
+        })
+    elif 'GET /toggleLED' in request:
+        led_pin.value(0 if led_pin.value() else 1)
+        send_json(conn, '200 OK', {
+            'ledState': led_pin.value(),
+        })
+    else:
+        send_json(conn, '404 Not Found', {
+            'error': 'Route not found',
+        })
+    
+    conn.close()
+```
+
+`secrets.example.py`
+```python
+# WiFi credentials 
+SSID = "YOUR_NET_SSID"
+PASSWORD = "YOUR_NET_PASS"
+```
+
+`web_server.py`
+```python
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+import time
+import network
+from secrets import SSID, PASSWORD
+
+
+def connect_wifi(timeout=15):
+    """Connect to WiFi network. Returns True if connected, False otherwise."""
+    nic = network.WLAN(network.WLAN.IF_STA)
+    nic.active(True)
+
+    if not nic.isconnected():
+        print('Connecting to WiFi...')
+        nic.connect(SSID, PASSWORD)
+        # wait for connection (timeout after ~15 seconds)
+        while not nic.isconnected() and timeout > 0:
+            time.sleep(1)
+            timeout -= 1
+
+    if nic.isconnected():
+        print('Connected, network config:', nic.ifconfig())
+        return True
+    else:
+        print('Failed to connect to WiFi. Check SSID/PASSWORD')
+        return False
+
+
+def send_response(conn, status, content_type, body):
+    conn.send(('HTTP/1.1 {}\r\n'.format(status)).encode())
+    conn.send(('Content-Type: {}\r\n'.format(content_type)).encode())
+    conn.send('Connection: close\r\n\r\n'.encode())
+    conn.send(body.encode())
+
+
+def send_json(conn, status, payload):
+    send_response(conn, status, 'application/json', json.dumps(payload))
+
+
+def serve_file(conn, filepath, status='200 OK', content_type='text/html'):
+    """Serve a file from the filesystem."""
+    try:
+        with open(filepath, 'r') as f:
+            body = f.read()
+        send_response(conn, status, content_type, body)
+        return True
+    except OSError:
+        return False
+```
+
+`index.html`
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button & LED Control</title>
+</head>
+<body>
+    <h1>Button & LED Control</h1>
+    
+    <p>Button Status: <strong id="buttonStatus">Loading...</strong></p>
+    <p>CPU Temperature: <strong id="cpuTemp">Loading...</strong> &deg;C</p>
+    
+    <button onclick="toggleLED()">Toggle LED</button>
+    
+    <script>
+        async function updateStatus() {
+            try {
+                const response = await fetch('/hardwareState');
+                const data = await response.json();
+                document.getElementById('buttonStatus').textContent = data.buttonState ? 'Pressed' : 'Not Pressed';
+                document.getElementById('cpuTemp').textContent = data.cpuTemp.toFixed(2);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function toggleLED() {
+            try {
+                const response = await fetch('/toggleLED');
+                const data = await response.json();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        // Update status on page load and every 1000ms
+        updateStatus();
+        setInterval(updateStatus, 1000);
+    </script>
+</body>
+</html>
+```
 
 ### Output
 ![breadboard setup](./ControllingStuff/output.JPEG)
