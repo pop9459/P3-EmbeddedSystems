@@ -365,103 +365,156 @@ except KeyboardInterrupt:
 ## Dino cheater (HID)
 
 ### Description
+the Dino cheater project aims to automate the Chrome Dino game using a raspberry to emulate keyboard inputs. To achieve this the contraption has 2 photoresistors that read the screen brightness which can tell the microcontroller if there is an obstacle approaching. I also included a push button that can be used to enable or disable the cheater without having to unplug the device. Achieving a consistent performance with this setup can be quite tricky and might give you varying results based on your displays brightness refresh rate or even ambient light. 
 
-### Code
-```python
-from machine import Pin, SoftI2C, I2C, ADC
-from machine_i2c_lcd import I2cLcd
-import time
-import ds1302
+To achieve this in the code i implemented a calibration method which runs initially before the main loop. It takes multiple readings of the photoresistors and based on the highest and lowest observed values it can determine roughly where is the threshold between the background and the obstacles. During the calibration you are expected to expose both photoresistors to the background and the obstacles so it can get a good range of values to work with. After the calibration is done the code enters the main loop where it continuously reads the photoresistors and sends a jump/duck key if it detects an obstacle. To further improve consistency the code also has a short buffer of readings so it doesn't send missinputs in case of a sudden spike. I recommend to keep this buffer short because it can slow reaction time or miss obstacles completely if they don't contribute to the average enough. 
 
-# RTC constants
-RTC_CLK_PIN = 5
-RTC_DAT_PIN = 7
-RTC_RST_PIN = 8
-
-# I2C LCD constants
-I2C_NUM_ROWS = 2
-I2C_NUM_COLS = 16
-
-LCD_SDA_PIN = 16
-LCD_SCL_PIN = 17
-
-# RTC initialization
-rtc_module = ds1302.DS1302(Pin(RTC_CLK_PIN), Pin(RTC_DAT_PIN), Pin(RTC_RST_PIN))
-
-# LCD initialization
-i2c = I2C(0, scl=Pin(LCD_SCL_PIN), sda=Pin(LCD_SDA_PIN), freq=400000)
-devices = i2c.scan()
-
-i2c_addr = None
-for d in devices:
-    if d in range(0x20, 0x28):  # PCF8574 I2C address range
-        print(f"Setting i2c address: {hex(d)}")
-        i2c_addr = d
-        break
-
-lcd = I2cLcd(i2c, i2c_addr, I2C_NUM_ROWS, I2C_NUM_COLS)
-lcd.backlight_on()
-lcd.hide_cursor()
-lcd.clear()
-
-# LM35 initialization
-LM35 = ADC(Pin(26)) 
-
-# set the rtc module
-#rtc_module.date_time([2026, 3, 8, 7, 19, 50, 0]) # format: [year, month, day, weekday, hour, minute, second]
-
-# Main loop variables
-current_time = time.time()
-tmp_read_update_interval = 3  # seconds
-next_tmp_read_time = current_time # Read temp every 10 seconds
-
-rtc_update_interval = 1  # seconds
-next_rtc_update_time = current_time  # Update RTC display every second
-
-lcd_update_interval = 0.5  # seconds
-next_lcd_update_time = current_time# Update LCD every second
-
-try:
-    while True:
-        current_time = time.time()
-
-        # Get data from temp sensor
-        if current_time >= next_tmp_read_time:
-            LM35raw = LM35.read_u16()
-            LM35temp = (LM35raw / 65535) * 3.3 * 100  # Convert to Celsius
-
-            next_tmp_read_time = current_time + tmp_read_update_interval 
-
-        # Get data from DS1302 RTC
-        if current_time >= next_rtc_update_time:
-            date_time = rtc_module.date_time()
-
-            next_rtc_update_time = current_time + rtc_update_interval
-
-        # Debug print
-        # if date_time is not None:
-        #     print(f"Current Date and Time: {date_time[2]:02d}.{date_time[1]:02d}.{date_time[0]:04d} {date_time[4]:02d}:{date_time[5]:02d}:{date_time[6]:02d}")
-        # else:
-        #     print("Current Date and Time: unavailable")
-
-        # Display on LCD
-        if current_time >= next_lcd_update_time:
-            if date_time is not None:
-                lcd.move_to(0, 0)
-                lcd.putstr(f"{date_time[2]:02d}.{date_time[1]:02d}.  {date_time[4]:02d}:{date_time[5]:02d}:{date_time[6]:02d}")
-            
-            lcd.move_to(0, 1)
-            lcd.putstr(f"Temp: {LM35temp:02.1f}C")
-
-            next_lcd_update_time = current_time + lcd_update_interval
-
-except KeyboardInterrupt:
-    print("Exiting program.")
-    lcd.backlight_off()
-```
+Components used:
+- 1x RPI Pico W
+- 2x photoresistor
+- 2x 220Ω resistor
+- 1x 10KΩ resistor
+- 1x push button
 
 ### Schematic
 ![schematic](./DinoCheater/schematic.png)
+
+### Code
+```python
+# Circuit python
+import time
+import board
+import analogio
+import digitalio
+import usb_hid
+from adafruit_hid.keyboard import Keyboard
+from adafruit_hid.keycode import Keycode
+
+BUTTON_PIN = board.GP15
+BUILTIN_LED_PIN = board.LED
+TOP_PHOTORESISTOR_PIN = board.GP27
+BOT_PHOTORESISTOR_PIN = board.GP28
+
+# TOP_BLACK_TRESHHOLD = 2000
+# BOT_BLACK_TRESHHOLD = 3000
+
+SENSOR_HISTORY_SIZE = 5
+CALIBRATION_SAMPLES = 500
+CALIBRATION_SAMPLE_DELAY = 0.01
+BLACK_THRESHOLD_FACTOR = 0.35 # 0-1, more = sooner trigger
+
+JUMP_KEY = Keycode.UP_ARROW
+DUCK_KEY = Keycode.DOWN_ARROW
+
+# Initialize the devices
+button_pin = digitalio.DigitalInOut(BUTTON_PIN)
+button_pin.direction = digitalio.Direction.INPUT
+
+built_in_led = digitalio.DigitalInOut(BUILTIN_LED_PIN)
+built_in_led.direction = digitalio.Direction.OUTPUT
+
+top_photoresistor = analogio.AnalogIn(TOP_PHOTORESISTOR_PIN)
+bot_photoresistor = analogio.AnalogIn(BOT_PHOTORESISTOR_PIN)   
+
+# Initialize the keyboard
+kbd = Keyboard(usb_hid.devices)
+
+game_started = False
+built_in_led.value = False
+
+top_sensor_history = []
+bot_sensor_history = []
+
+
+def calibrate_photoresistors(sample_count=CALIBRATION_SAMPLES, sample_delay=CALIBRATION_SAMPLE_DELAY):
+    top_max = 0
+    top_min = 65535
+    bot_max = 0
+    bot_min = 65535
+
+    print("Calibrating sensors...")
+    built_in_led.value = True
+    for _ in range(sample_count):
+        if(top_photoresistor.value > top_max):
+            top_max = top_photoresistor.value
+        if(top_photoresistor.value < top_min):
+            top_min = top_photoresistor.value
+        if(bot_photoresistor.value > bot_max):
+            bot_max = bot_photoresistor.value
+        if(bot_photoresistor.value < bot_min):
+            bot_min = bot_photoresistor.value
+        time.sleep(sample_delay)
+    built_in_led.value = False
+
+    top_diff = top_max - top_min
+    bot_diff = bot_max - bot_min
+
+    top_threshold = top_min + (top_diff * BLACK_THRESHOLD_FACTOR)
+    bot_threshold = bot_min + (bot_diff * BLACK_THRESHOLD_FACTOR)
+
+    return top_threshold, bot_threshold
+
+
+TOP_BLACK_TRESHHOLD, BOT_BLACK_TRESHHOLD = calibrate_photoresistors()
+
+while True:
+    top_value = top_photoresistor.value
+    bot_value = bot_photoresistor.value
+
+    top_sensor_history.append(top_value)
+    if len(top_sensor_history) > SENSOR_HISTORY_SIZE:
+        top_sensor_history.pop(0)
+
+    bot_sensor_history.append(bot_value)
+    if len(bot_sensor_history) > SENSOR_HISTORY_SIZE:
+        bot_sensor_history.pop(0)
+    
+    top_average = sum(top_sensor_history) / len(top_sensor_history)
+    bot_average = sum(bot_sensor_history) / len(bot_sensor_history)
+
+    print(f"Top AVG: {top_average} Bot AVG: {bot_average}  | Top_tresh: {TOP_BLACK_TRESHHOLD} Bot_tresh: {BOT_BLACK_TRESHHOLD}") 
+
+    button_value = bool(button_pin.value)
+    if(button_value):
+        print("Starting game")
+        game_started = not game_started
+        built_in_led.value = game_started
+        if game_started:
+            kbd.press(JUMP_KEY)
+            kbd.release(JUMP_KEY)
+            kbd.press(DUCK_KEY)
+            kbd.release(DUCK_KEY)
+        else:
+            kbd.release(JUMP_KEY)
+            kbd.release(DUCK_KEY)
+        time.sleep(1)
+
+    if(game_started):
+        # Avoid cactus
+        if(bot_average < BOT_BLACK_TRESHHOLD):
+            print("Jump")
+            kbd.press(JUMP_KEY)
+            built_in_led.value = False
+            time.sleep(0.25)
+            kbd.release(JUMP_KEY)
+            kbd.press(DUCK_KEY)
+            time.sleep(0.075)
+            kbd.release(DUCK_KEY)
+            built_in_led.value = True
+        
+        # Avoid flying bird
+        if(top_average < TOP_BLACK_TRESHHOLD and bot_average > BOT_BLACK_TRESHHOLD):
+            print("Duck")
+            kbd.press(DUCK_KEY)
+            built_in_led.value = False
+            time.sleep(0.6)
+            kbd.release(DUCK_KEY)
+            built_in_led.value = True
+```
+
+#### External libraries used:
+- Adafruit HID keyboard library: https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keyboard.py
+- Adafruit HID keycode library: https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keycode.py
 
 ### Output
 ![breadboard setup](./DinoCheater/output.JPEG)
