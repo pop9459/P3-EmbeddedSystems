@@ -247,6 +247,15 @@ class Display():
 ## RTC and temperature on LCD-display
 
 ### Description
+This project uses a DS1302 RTC module to get the current date and time, an LM35 temperature sensor to measure the ambient temperature and it displays this information on a 16x2 I2C LCD display.
+
+The code utilizes external libraries for the LCD display and the RTC module. It initializes the modules and then enters its main loop. Here are 3 independent timers for each component so they can update at different intervals without straining the CPU too much
+
+Componets used:
+- 1x RPI Pico W
+- 1x DS1302 RTC module
+- 1x LM35 temperature sensor
+- 1x 16x2 I2C LCD display
 
 ### Code
 `main.py`
