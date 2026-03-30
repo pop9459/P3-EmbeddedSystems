@@ -3,6 +3,10 @@
 - Student ID: 5486866
 - Repository: https://github.com/pop9459/P3-EmbeddedSystems/
 
+## Assignment card
+
+![assignment card](./P3EmbeddedSystemsAssignmentCard.png)
+
 ## Blink with hardware reset
 
 ### Description
