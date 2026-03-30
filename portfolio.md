@@ -5,7 +5,7 @@
 
 ## Assignment card
 
-![assignment card](./P3EmbeddedSystemsAssignmentCard.png)
+<img src="./P3EmbeddedSystemsAssignmentCard.png" alt="assignment card" width="620"/>
 
 ## Blink with hardware reset
 
@@ -22,7 +22,7 @@ Components used:
 - push button
 
 ### Schematic
-![schematic](./BlinkWithExternalHardwareReset/schematic.png)
+<img src="./BlinkWithExternalHardwareReset/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -44,7 +44,7 @@ while True:
 ```
 
 ### Output
-![breadboard setup](./BlinkWithExternalHardwareReset/output.JPEG)
+<img src="./BlinkWithExternalHardwareReset/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/>
 
 ## Mario pico
 
@@ -88,7 +88,7 @@ for y in range(pyramidSize):
 ```
 
 ### Output
-![console output](/MarioPico/output.png)
+<img src="./MarioPico/output.png" alt="console output" style="max-height: 512px;"/>
 
 ## 7-Segments Voltmeter (0..10V)
 
@@ -108,7 +108,7 @@ Components used:
 - 4x BC547C transistor 
 
 ### Schematic
-![schematic](./7SegmentVoltmeter/schematic.png)
+<img src="./7SegmentVoltmeter/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -247,7 +247,7 @@ class Display():
 ```
 
 ### Output
-![breadboard setup](/7SegmentVoltmeter/output.JPEG)
+<img src="./7SegmentVoltmeter/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/>
 
 ## RTC and temperature on LCD-display
 
@@ -263,7 +263,7 @@ Componets used:
 - 1x 16x2 I2C LCD display
 
 ### Schematic
-![schematic](./RTC_temp_LCD/schematic.png)
+<img src="./RTC_temp_LCD/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -365,7 +365,7 @@ except KeyboardInterrupt:
 - ds1302 Real Time Clock library: https://github.com/omarbenhamid/micropython-ds1302-rtc/blob/master/ds1302.py
 
 ### Output
-![breadboard setup](/RTC_temp_LCD/output.JPEG) 
+<img src="./RTC_temp_LCD/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/> 
 
 ## Dino cheater (HID)
 
@@ -382,7 +382,7 @@ Components used:
 - 1x push button
 
 ### Schematic
-![schematic](./DinoCheater/schematic.png)
+<img src="./DinoCheater/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -523,7 +523,7 @@ while True:
 - Adafruit HID keycode library: https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keycode.py
 
 ### Output
-![breadboard setup](./DinoCheater/output.JPEG)
+<img src="./DinoCheater/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/>
 
 ## Analog joystick (HID)
 
@@ -539,7 +539,7 @@ Components used:
 - 1x push button
 
 ### Schematic
-![schematic](./AnalogJoystick/schematic.png)
+<img src="./AnalogJoystick/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -630,7 +630,7 @@ while True:
 - Adafruit HID keycode library: https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keycode.py
 
 ### Output
-![breadboard setup](./AnalogJoystick/output.JPEG)
+<img src="./AnalogJoystick/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/>
 
 ## WiFi scanner
 
@@ -802,7 +802,7 @@ PASSWORD = "YOUR_NET_PASS"
 ```
 
 ### Output
-![breadboard setup](./WiFiScanner/output.png)
+<img src="./WiFiScanner/output.png" alt="breadboard setup" style="max-height: 512px;"/>
 
 ## Controlling stuff (Webserver)
 
@@ -820,7 +820,7 @@ Components used:
 - 2x 10kΩ resistor
 
 ### Schematic
-![schematic](./ControllingStuff/schematic.png)
+<img src="./ControllingStuff/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -989,8 +989,8 @@ def serve_file(conn, filepath, status='200 OK', content_type='text/html'):
 ```
 
 ### Output
-![breadboard setup](./ControllingStuff/output.JPEG)
-![web interface](./ControllingStuff/output2.png)
+<img src="./ControllingStuff/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/>
+<img src="./ControllingStuff/output2.png" alt="web interface" style="max-height: 512px;"/>
 
 ## Attendance (RFID, RTC, web and LCD)
 
@@ -1012,7 +1012,7 @@ Components used:
 - 1x RGB LED module (module just adds 3x resistors for convenience)
 
 ### Schematic
-![schematic](./Attendance/schematic.png)
+<img src="./Attendance/schematic.png" alt="schematic" style="max-height: 512px;"/>
 
 ### Code
 `main.py`
@@ -1677,5 +1677,5 @@ class AttendanceDB:
 - RC522 RFID reader library: https://github.com/danjperron/micropython-mfrc522/blob/master/mfrc522.py
 
 ### Output
-![breadboard setup](./Attendance/output.JPEG)
-![web interface](./Attendance/output2.png)
+<img src="./Attendance/output.JPEG" alt="breadboard setup" style="max-height: 512px;"/>
+<img src="./Attendance/output2.png" alt="web interface" style="max-height: 512px;"/>
